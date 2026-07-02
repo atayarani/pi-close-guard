@@ -1,0 +1,18 @@
+{
+  "name": "pi-close-guard",
+  "version": "0.1.0",
+  "description": "Confirm before /clear or /new discards a non-empty pi conversation. Configurable prompt.",
+  "keywords": ["pi-package", "pi", "extension"],
+  "license": "MIT",
+  "author": "Ali Tayarani",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atayarani/pi-close-guard.git"
+  },
+  "pi": {
+    "extensions": ["./extensions"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
