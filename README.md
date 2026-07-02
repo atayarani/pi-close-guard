@@ -1,5 +1,7 @@
 # pi-close-guard
 
+[![CI](https://github.com/atayarani/pi-close-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/atayarani/pi-close-guard/actions/workflows/ci.yml)
+
 A tiny [pi](https://github.com/badlogic/pi-mono) extension that **confirms before
 `/clear` or `/new` throws away a non-empty conversation** — so you don't nuke a
 session by reflex.
@@ -58,6 +60,26 @@ Any subset of keys overrides the defaults:
 | `guardNew` | `true` | Guard `/clear` and `/new` |
 | `guardResume` | `false` | Also guard `/resume` |
 | `minMessages` | `1` | Minimum user/assistant messages before guarding |
+
+## Development
+
+```bash
+npm install      # dev deps (typescript, prettier, pi types)
+npm run check    # typecheck + format check (what CI runs)
+npm run format   # auto-fix formatting
+```
+
+## Releasing
+
+Releases are automatic. To cut one:
+
+1. Make your change to `extensions/close-guard.ts`.
+2. Bump `version` in `package.json`.
+3. Commit and push to `main`.
+
+CI typechecks, then — if that `version` isn't already released — tags `vX.Y.Z` and
+creates a matching GitHub Release with generated notes. No manual tagging. Consumers
+pin to the tag (e.g. `pi install git:github.com/atayarani/pi-close-guard@vX.Y.Z`).
 
 ## License
 

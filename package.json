@@ -2,17 +2,35 @@
   "name": "pi-close-guard",
   "version": "0.1.0",
   "description": "Confirm before /clear or /new discards a non-empty pi conversation. Configurable prompt.",
-  "keywords": ["pi-package", "pi", "extension"],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension"
+  ],
   "license": "MIT",
   "author": "Ali Tayarani",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/atayarani/pi-close-guard.git"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"extensions/**/*.ts\"",
+    "format:check": "prettier --check \"extensions/**/*.ts\"",
+    "check": "npm run typecheck && npm run format:check"
+  },
   "pi": {
-    "extensions": ["./extensions"]
+    "extensions": [
+      "./extensions"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.3",
+    "@types/node": "^26.1.0",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3"
   }
 }
