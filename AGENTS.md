@@ -6,8 +6,11 @@ git-installable pi package. Keep it tiny, generic, and dependency-light.
 
 ## Structure
 
-- `extensions/close-guard.ts` — the whole extension. One `session_before_switch`
-  handler; all user-facing text is config-driven.
+- `extensions/close-guard.ts` — the extension. Thin `pi.on("session_before_switch")`
+  adapter over pure, exported helpers (`loadConfig`, `shouldPrompt`, `decide`, ...).
+- `test/close-guard.test.ts` — `node:test` unit tests for the pure helpers. Tests
+  live **outside** `extensions/` on purpose: pi loads every `.ts` in `extensions/`
+  as an extension, and a test file has no factory export (it would fail to load).
 - `package.json` — `pi.extensions` manifest + `pi-package` keyword; peer-deps on
   `@earendil-works/pi-coding-agent` (provided by pi at runtime).
 - `tsconfig.json` — typecheck only (`noEmit`, `skipLibCheck`).
@@ -33,10 +36,16 @@ any consumer's private wording.
 ## Develop
 
 ```bash
-npm install        # dev deps (typescript, prettier, pi types)
-npm run check      # typecheck + format:check (exactly what CI runs)
+npm install        # dev deps (typescript, prettier, tsx, pi types)
+npm run check      # typecheck + format:check + tests (exactly what CI runs)
+npm test           # node:test unit tests only
 npm run format     # auto-fix formatting
 ```
+
+Unit tests cover the pure logic (config precedence/merge/invalid-JSON fallback,
+the reason/UI/threshold gating, and cancel-on-decline). They do **not** mock pi
+to "prove" the integration — whether the event fires / dialog renders is verified
+by hand, not faked.
 
 ## Release (automated — do not tag by hand)
 

@@ -7,20 +7,21 @@ import { join } from "node:path";
  * pi-close-guard
  *
  * Confirms before `/clear` or `/new` discards a non-empty conversation, so you
- * don't lose the current session by reflex. `/clear` and `/new` both fire
- * `session_before_switch` with reason "new"; this cancels the switch if you
- * decline the prompt.
+ * don't nuke a session by reflex. Both fire `session_before_switch` with reason
+ * "new"; declining the prompt cancels the switch.
  *
  * `/resume` is off by default (it doesn't discard). `/quit` is not covered:
- * `session_shutdown` is a cleanup hook and isn't cancelable — and quit leaves a
- * resumable transcript anyway.
+ * `session_shutdown` isn't cancelable, and quit leaves a resumable transcript.
  *
- * Everything user-facing is configurable so the prompt can be tailored (or made
- * to reference your own pre-clear ritual) without editing code. Config is read
- * from, in order: `$CLOSE_GUARD_CONFIG`, `$PI_CODING_AGENT_DIR/close-guard.json`,
- * or `~/.pi/agent/close-guard.json`. Any subset of keys overrides the defaults.
+ * All user-facing text is config-driven so the prompt can be tailored without
+ * editing code. Config is read from, in order: `$CLOSE_GUARD_CONFIG`,
+ * `$PI_CODING_AGENT_DIR/close-guard.json`, or `~/.pi/agent/close-guard.json`.
+ * Any subset of keys overrides the defaults.
+ *
+ * The pure helpers (`loadConfig`, `shouldPrompt`, `decide`, ...) are exported for
+ * unit testing; the default export is a thin adapter that wires them to pi.
  */
-interface CloseGuardConfig {
+export interface CloseGuardConfig {
   /** Confirm dialog title. */
   title?: string;
   /** Confirm dialog body. */
@@ -33,7 +34,7 @@ interface CloseGuardConfig {
   minMessages?: number;
 }
 
-const DEFAULTS: Required<CloseGuardConfig> = {
+export const DEFAULTS: Required<CloseGuardConfig> = {
   title: "Discard conversation?",
   message: "This will clear the current conversation. Continue?",
   guardNew: true,
@@ -41,12 +42,16 @@ const DEFAULTS: Required<CloseGuardConfig> = {
   minMessages: 1,
 };
 
-function loadConfig(): Required<CloseGuardConfig> {
+/** Resolve config from the first readable candidate file, merged over defaults. */
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): Required<CloseGuardConfig> {
+  const home = env.HOME ?? env.USERPROFILE ?? homedir();
   const candidates = [
-    process.env.CLOSE_GUARD_CONFIG,
-    process.env.PI_CODING_AGENT_DIR &&
-      join(process.env.PI_CODING_AGENT_DIR, "close-guard.json"),
-    join(homedir(), ".pi", "agent", "close-guard.json"),
+    env.CLOSE_GUARD_CONFIG,
+    env.PI_CODING_AGENT_DIR &&
+      join(env.PI_CODING_AGENT_DIR, "close-guard.json"),
+    join(home, ".pi", "agent", "close-guard.json"),
   ].filter((p): p is string => Boolean(p));
 
   for (const path of candidates) {
@@ -60,31 +65,55 @@ function loadConfig(): Required<CloseGuardConfig> {
   return DEFAULTS;
 }
 
+/** Minimal shapes we use from pi — kept local so tests need no pi runtime. */
+export type SessionEntry = { type?: string; message?: { role?: string } };
+interface GuardEvent {
+  reason: string;
+}
+interface GuardCtx {
+  hasUI: boolean;
+  ui: { confirm(title: string, message: string): Promise<boolean> };
+  sessionManager?: { getEntries?: () => SessionEntry[] };
+}
+
+/** Count real conversation turns (user/assistant messages) in a session. */
+export function countConversationMessages(
+  entries: readonly SessionEntry[],
+): number {
+  return entries.filter(
+    (e) =>
+      e?.type === "message" &&
+      (e.message?.role === "user" || e.message?.role === "assistant"),
+  ).length;
+}
+
+/** Pure gate: should we prompt before this switch? */
+export function shouldPrompt(
+  reason: string,
+  entries: readonly SessionEntry[],
+  hasUI: boolean,
+  cfg: Required<CloseGuardConfig>,
+): boolean {
+  if (reason === "new" && !cfg.guardNew) return false;
+  if (reason === "resume" && !cfg.guardResume) return false;
+  if (reason !== "new" && reason !== "resume") return false;
+  if (!hasUI) return false;
+  return countConversationMessages(entries) >= cfg.minMessages;
+}
+
+/** Full decision: prompt when warranted; cancel the switch if the user declines. */
+export async function decide(
+  event: GuardEvent,
+  ctx: GuardCtx,
+  cfg: Required<CloseGuardConfig>,
+): Promise<{ cancel: true } | undefined> {
+  const entries = ctx.sessionManager?.getEntries?.() ?? [];
+  if (!shouldPrompt(event.reason, entries, ctx.hasUI, cfg)) return undefined;
+  const proceed = await ctx.ui.confirm(cfg.title, cfg.message);
+  return proceed ? undefined : { cancel: true };
+}
+
 export default function (pi: ExtensionAPI) {
   const cfg = loadConfig();
-
-  pi.on("session_before_switch", async (event, ctx) => {
-    const reason = event.reason;
-    if (reason === "new" && !cfg.guardNew) return;
-    if (reason === "resume" && !cfg.guardResume) return;
-    if (reason !== "new" && reason !== "resume") return;
-
-    // No prompt possible without an interactive UI (e.g. -p / json / rpc runs).
-    if (!ctx.hasUI) return;
-
-    // Only intervene if there's an actual conversation worth keeping.
-    const entries = (ctx.sessionManager?.getEntries?.() ?? []) as Array<{
-      type?: string;
-      message?: { role?: string };
-    }>;
-    const count = entries.filter(
-      (e) =>
-        e?.type === "message" &&
-        (e.message?.role === "user" || e.message?.role === "assistant"),
-    ).length;
-    if (count < cfg.minMessages) return;
-
-    const proceed = await ctx.ui.confirm(cfg.title, cfg.message);
-    if (!proceed) return { cancel: true };
-  });
+  pi.on("session_before_switch", (event, ctx) => decide(event, ctx, cfg));
 }
