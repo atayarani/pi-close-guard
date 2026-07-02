@@ -1,7 +1,7 @@
 # AGENTS.md — pi-close-guard
 
 A single-purpose [pi](https://github.com/badlogic/pi-mono) extension: **confirm
-before `/clear` or `/new` discards a non-empty conversation.** Distributed as a
+before `/new` discards a non-empty conversation.** Distributed as a
 git-installable pi package. Keep it tiny, generic, and dependency-light.
 
 ## Structure
@@ -18,7 +18,7 @@ git-installable pi package. Keep it tiny, generic, and dependency-light.
 
 ## How it works
 
-`/clear` and `/new` both fire `session_before_switch` with `reason: "new"`. The
+Starting a new session (`/new`) fires `session_before_switch` with `reason: "new"`. The
 handler returns `{ cancel: true }` to block the switch when the user declines.
 It stays silent without a UI (`ctx.hasUI`) and on empty sessions (checks for
 real user/assistant messages). `/resume` is opt-in; `/quit` is intentionally not

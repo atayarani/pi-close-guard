@@ -3,12 +3,14 @@
 [![CI](https://github.com/atayarani/pi-close-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/atayarani/pi-close-guard/actions/workflows/ci.yml)
 
 A tiny [pi](https://github.com/badlogic/pi-mono) extension that **confirms before
-`/clear` or `/new` throws away a non-empty conversation** — so you don't nuke a
-session by reflex.
+`/new` throws away a non-empty conversation** — so you don't nuke a session by
+reflex.
 
-Both `/clear` and `/new` fire `session_before_switch` with reason `"new"`;
-this extension intercepts that and cancels the switch if you decline the prompt.
-It stays out of the way on empty/fresh sessions and in non-interactive runs.
+Starting a new session (`/new`) fires `session_before_switch` with reason
+`"new"`; this extension intercepts that and cancels the switch if you decline the
+prompt. Because it hooks the event (not a command name), it catches whatever
+triggers a new session. It stays out of the way on empty/fresh sessions and in
+non-interactive runs.
 
 ## Install
 
@@ -24,8 +26,8 @@ pi -e git:github.com/atayarani/pi-close-guard
 
 ## Behavior
 
-- Prompts before `/clear` and `/new` when the current session has at least one
-  real message. Decline → the clear is cancelled; confirm → it proceeds.
+- Prompts before `/new` (start-a-new-session) when the current session has at
+  least one real message. Decline → the switch is cancelled; confirm → it proceeds.
 - Leaves `/resume` alone by default (it doesn't discard).
 - Does **not** guard `/quit`: `session_shutdown` isn't cancelable, and quit leaves
   a resumable transcript anyway.
@@ -57,7 +59,7 @@ Any subset of keys overrides the defaults:
 |-----|---------|---------|
 | `title` | `"Discard conversation?"` | Confirm dialog title |
 | `message` | `"This will clear the current conversation. Continue?"` | Confirm dialog body |
-| `guardNew` | `true` | Guard `/clear` and `/new` |
+| `guardNew` | `true` | Guard `/new` (reason `"new"`) |
 | `guardResume` | `false` | Also guard `/resume` |
 | `minMessages` | `1` | Minimum user/assistant messages before guarding |
 

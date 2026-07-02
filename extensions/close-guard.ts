@@ -6,9 +6,10 @@ import { join } from "node:path";
 /**
  * pi-close-guard
  *
- * Confirms before `/clear` or `/new` discards a non-empty conversation, so you
- * don't nuke a session by reflex. Both fire `session_before_switch` with reason
- * "new"; declining the prompt cancels the switch.
+ * Confirms before `/new` discards a non-empty conversation, so you don't nuke a
+ * session by reflex. Starting a new session fires `session_before_switch` with
+ * reason "new"; declining the prompt cancels the switch. It hooks the event, not
+ * a command name, so it catches whatever triggers a new session.
  *
  * `/resume` is off by default (it doesn't discard). `/quit` is not covered:
  * `session_shutdown` isn't cancelable, and quit leaves a resumable transcript.
@@ -26,7 +27,7 @@ export interface CloseGuardConfig {
   title?: string;
   /** Confirm dialog body. */
   message?: string;
-  /** Guard `/clear` and `/new` (reason "new"). Default true. */
+  /** Guard the new-session path (`/new`, reason "new"). Default true. */
   guardNew?: boolean;
   /** Also guard `/resume` (reason "resume"). Default false. */
   guardResume?: boolean;
